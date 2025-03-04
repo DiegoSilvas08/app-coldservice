@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import firebase from '../database/firebase';
 
+const { db } = firebase;
+
 const UserDetailScreen = ({ route, navigation }) => {
   const { userId } = route.params;
   const [user, setUser] = useState({ name: '', email: '', phone: '' });

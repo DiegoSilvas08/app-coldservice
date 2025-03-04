@@ -34,22 +34,22 @@ const CreateUserScreen = (props) => {
     return(
         <ScrollView style={styles.container}>
             <View style={styles.inputGroup}>
-                <TextInput placeholder="Name User" 
+                <TextInput placeholder="Nombre de la Empresa" 
                 onChangeText={(value) => handleChangeText('name', value)}
                 />
             </View>
             <View style={styles.inputGroup}>
-                <TextInput placeholder="Email User"
+                <TextInput placeholder="Correo Electronico"
                 onChangeText={(value) => handleChangeText('email', value)}
                 />
             </View>
             <View style={styles.inputGroup}>
-                <TextInput placeholder="Phone User"
+                <TextInput placeholder="Número de Telefono"
                 onChangeText={(value) => handleChangeText('phone', value)}
                 />
             </View>
             <View>
-                <Button title="Save User" onPress={() => saveNewUser()}/>
+                <Button title="Crear Proveedor" onPress={() => saveNewUser()}/>
             </View>
         </ScrollView>
     )
