@@ -1,49 +1,56 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking, StyleSheet, Alert } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth } from '../database/firebase'; // Importa auth para cerrar sesión
+import { auth } from '../database/firebase';
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = ({ navigation, route }) => {
+  const { userRole } = route.params; // Obtén el rol del usuario
+
   const handleLogout = async () => {
     try {
       await auth.signOut();
-      navigation.replace('LoginScreen'); // Redirige a LoginScreen después de cerrar sesión
+      navigation.replace('LoginScreen'); // Cierra sesión y redirige al LoginScreen
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
       Alert.alert('Error', 'No se pudo cerrar la sesión.');
     }
   };
 
+  const handleGoBack = () => {
+    navigation.navigate('LoginScreen'); // Regresa al LoginScreen sin cerrar sesión
+  };
+
   return (
     <View style={styles.container}>
-      {/* Título de la Aplicación */}
       <Text style={styles.header}>Cold Service</Text>
 
-      {/* Botón de Reportes y Estadísticas */}
+      {/* Botón de Reportes (visible para todos) */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('ReportesScreen')} // Nombre corregido
+        onPress={() => navigation.navigate('ReportesScreen')}
       >
-        <Text style={styles.buttonText}>Reportes y Estadísticas</Text>
+        <Text style={styles.buttonText}>Reportes</Text>
       </TouchableOpacity>
 
-      {/* Botón de Empleados */}
+      {/* Botón de Registros (visible para todos) */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('EmpleadosScreen')} // Nombre corregido
+        onPress={() => navigation.navigate('ConsultarReportesScreen', { userRole })}
       >
-        <Text style={styles.buttonText}>Empleados</Text>
+        <Text style={styles.buttonText}>Registros</Text>
       </TouchableOpacity>
 
-      {/* Botón de Servicio */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('UserList')}
-      >
-        <Text style={styles.buttonText}>Servicio</Text>
-      </TouchableOpacity>
+      {/* Botón de Servicio (solo para admin) */}
+      {userRole === 'admin' && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate('UserList')}
+        >
+          <Text style={styles.buttonText}>Servicio</Text>
+        </TouchableOpacity>
+      )}
 
-      {/* Botón de WhatsApp */}
+      {/* Botón de WhatsApp (visible para todos) */}
       <TouchableOpacity
         style={styles.whatsappButton}
         onPress={() => Linking.openURL('https://wa.me/+526621829724')}
@@ -51,10 +58,10 @@ const HomeScreen = ({ navigation }) => {
         <FontAwesome name="whatsapp" size={24} color="green" />
       </TouchableOpacity>
 
-      {/* Botón de Atrás (cierra sesión y redirige a LoginScreen) */}
+      {/* Botón de Atrás (regresa al LoginScreen sin cerrar sesión) */}
       <TouchableOpacity
         style={styles.backButtonBottom}
-        onPress={handleLogout} // Cierra sesión y redirige
+        onPress={handleGoBack} // Regresa al LoginScreen
       >
         <FontAwesome name="arrow-left" size={24} color="#000" />
       </TouchableOpacity>

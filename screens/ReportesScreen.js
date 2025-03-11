@@ -1,48 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { db, storage, FieldValue } from '../database/firebase';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Importa íconos
+import firebase from '../database/firebase'; // Importa firebase como un objeto
+
+const { db, firebase: firebaseInstance } = firebase; // Extrae db y firebase del objeto exportado
 
 const ReportesScreen = ({ navigation }) => {
   const [clientName, setClientName] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(new Date());
   const [location, setLocation] = useState('');
-  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso denegado', 'Necesitas permitir el acceso a la galería para seleccionar fotos.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setPhotos([...photos, result.assets[0]]); // Agrega la foto seleccionada al estado
-    }
-  };
-
-  const uploadImage = async (uri) => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const storageRef = storage.ref(`servicePhotos/${Date.now()}`);
-      await storageRef.put(blob);
-      const downloadURL = await storageRef.getDownloadURL();
-      return downloadURL;
-    } catch (error) {
-      console.error('Error al subir la foto:', error);
-      Alert.alert('Error', 'Hubo un problema al subir la foto.');
-      return null;
-    }
-  };
+  const estado = 'completado'; // Valor predeterminado
 
   const saveReport = async () => {
     if (!clientName || !serviceDescription || !date || !location) {
@@ -52,22 +33,20 @@ const ReportesScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const photoURLs = await Promise.all(photos.map((photo) => uploadImage(photo.uri)));
       await db.collection('reportes').add({
         clientName,
         serviceDescription,
-        date,
+        date: date.toISOString().split('T')[0], // Formato YYYY-MM-DD
         location,
-        photos: photoURLs,
-        createdAt: FieldValue.serverTimestamp(),
+        estado,
+        createdAt: firebaseInstance.firestore.FieldValue.serverTimestamp(), // Usa firebaseInstance
       });
 
       Alert.alert('Éxito', 'El reporte se ha guardado correctamente.');
       setClientName('');
       setServiceDescription('');
-      setDate('');
+      setDate(new Date());
       setLocation('');
-      setPhotos([]);
       navigation.goBack();
     } catch (error) {
       console.error('Error al guardar el reporte:', error);
@@ -77,112 +56,161 @@ const ReportesScreen = ({ navigation }) => {
     }
   };
 
+  const onDateChange = (event, selectedDate) => {
+    const currentDate = selectedDate || date;
+    setShowDatePicker(false);
+    setDate(currentDate);
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Reporte de Servicio</Text>
 
+      {/* Campo: Nombre del Cliente */}
       <Text style={styles.label}>Nombre del Cliente</Text>
       <TextInput
         style={styles.input}
         placeholder="Ingresa el nombre del cliente"
+        placeholderTextColor="#999"
         value={clientName}
         onChangeText={setClientName}
       />
 
+      {/* Campo: Descripción del Servicio */}
       <Text style={styles.label}>Descripción del Servicio</Text>
       <TextInput
         style={[styles.input, styles.multilineInput]}
         placeholder="Describe el servicio realizado"
+        placeholderTextColor="#999"
         value={serviceDescription}
         onChangeText={setServiceDescription}
         multiline
       />
 
+      {/* Campo: Fecha */}
       <Text style={styles.label}>Fecha</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ingresa la fecha (DD/MM/AAAA)"
-        value={date}
-        onChangeText={setDate}
-      />
+      <TouchableOpacity
+        style={styles.dateButton}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Icon name="event" size={20} color="#fff" />
+        <Text style={styles.dateButtonText}>Seleccionar Fecha</Text>
+      </TouchableOpacity>
+      {showDatePicker && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="default"
+          onChange={onDateChange}
+        />
+      )}
+      <Text style={styles.selectedDateText}>
+        Fecha seleccionada: {date.toLocaleDateString()}
+      </Text>
 
+      {/* Campo: Ubicación */}
       <Text style={styles.label}>Ubicación</Text>
       <TextInput
         style={styles.input}
         placeholder="Ingresa la ubicación"
+        placeholderTextColor="#999"
         value={location}
         onChangeText={setLocation}
       />
 
-      <Text style={styles.label}>Fotos</Text>
-      <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-        <Text style={styles.photoButtonText}>Seleccionar Fotos</Text>
-      </TouchableOpacity>
-
-      <View style={styles.photosContainer}>
-        {photos.map((photo, index) => (
-          <Image key={index} source={{ uri: photo.uri }} style={styles.photo} />
-        ))}
-      </View>
-
+      {/* Botón para guardar el reporte */}
       {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#007bff" />
       ) : (
-        <Button title="Guardar Reporte" onPress={saveReport} />
+        <TouchableOpacity style={styles.saveButton} onPress={saveReport}>
+          <Text style={styles.saveButtonText}>Guardar Reporte</Text>
+        </TouchableOpacity>
       )}
     </ScrollView>
   );
 };
 
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
   },
   label: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 10,
+    color: '#007bff', // Azul para las etiquetas
   },
   input: {
-    height: 40,
-    borderColor: '#ccc',
+    height: 50,
+    borderColor: '#ddd',
     borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 15,
-    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+    backgroundColor: '#fff',
+    fontSize: 16,
+    color: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   multilineInput: {
-    height: 100,
+    height: 120,
     textAlignVertical: 'top',
   },
-  photoButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 5,
+  dateButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    justifyContent: 'center',
+    backgroundColor: '#007bff', // Azul para el botón de fecha
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  photoButtonText: {
+  dateButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
-  photosContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 15,
+  selectedDateText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  photo: {
-    width: 100,
-    height: 100,
-    margin: 5,
-    borderRadius: 5,
+  saveButton: {
+    backgroundColor: '#007bff', // Azul para el botón de guardar
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

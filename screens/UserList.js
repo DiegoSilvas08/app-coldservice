@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, ScrollView, Alert } from 'react-native';
-import firebase from '../database/firebase'; // Importa firebase desde firebase.js
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Linking,
+  TouchableOpacity,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Para el sobre, tuerca y bote de basura
+import FontAwesome from 'react-native-vector-icons/FontAwesome'; // Para WhatsApp
+import firebase from '../database/firebase';
 
 const UserList = ({ navigation }) => {
   const [users, setUsers] = useState([]);
@@ -9,10 +19,8 @@ const UserList = ({ navigation }) => {
     const fetchUsers = async () => {
       try {
         const querySnapshot = await firebase.db.collection('usuarios').get();
-        console.log('QuerySnapshot:', querySnapshot); // Depuración
         const users = [];
         querySnapshot.forEach((doc) => {
-          console.log('Documento:', doc.id, doc.data()); // Depuración
           const { name, email, phone } = doc.data();
           users.push({
             id: doc.id,
@@ -21,7 +29,6 @@ const UserList = ({ navigation }) => {
             phone,
           });
         });
-        console.log('Usuarios obtenidos:', users); // Depuración
         setUsers(users);
       } catch (error) {
         console.error('Error al obtener usuarios:', error);
@@ -43,7 +50,6 @@ const UserList = ({ navigation }) => {
             try {
               await firebase.db.collection('usuarios').doc(id).delete();
               Alert.alert('Usuario eliminado correctamente');
-              // Actualiza la lista de usuarios después de eliminar
               setUsers(users.filter((user) => user.id !== id));
             } catch (error) {
               console.error('Error al eliminar usuario:', error);
@@ -55,32 +61,76 @@ const UserList = ({ navigation }) => {
     );
   };
 
+  // Función para abrir Gmail
+  const handleEmailPress = (email) => {
+    const subject = 'Consulta desde la app'; // Asunto del correo
+    const body = 'Hola, me gustaría contactarte.'; // Cuerpo del correo
+    const url = `mailto:${email}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'No se pudo abrir la aplicación de correo.');
+    });
+  };
+
+  // Función para abrir WhatsApp
+  const handleWhatsAppPress = (phone) => {
+    Linking.openURL(`https://wa.me/${phone}`).catch(() => {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp.');
+    });
+  };
+
   return (
     <ScrollView style={styles.container}>
-      <Button
-        title="Crear Usuario"
+      <TouchableOpacity
+        style={styles.createButton}
         onPress={() => navigation.navigate('CreateUserScreen')}
-      />
+      >
+        <Text style={styles.createButtonText}>Crear Usuario</Text>
+      </TouchableOpacity>
       {users.length === 0 ? (
         <Text style={styles.noUsersText}>No hay usuarios registrados.</Text>
       ) : (
         users.map((user) => (
           <View key={user.id} style={styles.userContainer}>
             <Text style={styles.text}>Nombre: {user.name}</Text>
-            <Text style={styles.text}>Email: {user.email}</Text>
-            <Text style={styles.text}>Teléfono: {user.phone}</Text>
+
+            {/* Ícono de sobre para el email */}
+            <TouchableOpacity
+              style={styles.iconContainer}
+              onPress={() => handleEmailPress(user.email)}
+            >
+              <Icon name="email" size={24} color="#007BFF" />
+              <Text style={styles.iconText}>{user.email}</Text>
+            </TouchableOpacity>
+
+            {/* Ícono de WhatsApp para el teléfono */}
+            <TouchableOpacity
+              style={styles.iconContainer}
+              onPress={() => handleWhatsAppPress(user.phone)}
+            >
+              <FontAwesome name="whatsapp" size={24} color="#25D366" />
+              <Text style={styles.iconText}>{user.phone}</Text>
+            </TouchableOpacity>
+
+            {/* Botones de editar y eliminar */}
             <View style={styles.buttonsContainer}>
-              <Button
-                title="Editar"
+              <TouchableOpacity
+                style={styles.iconButton}
                 onPress={() =>
                   navigation.navigate('UserDetailScreen', { userId: user.id })
                 }
-              />
-              <Button
-                title="Eliminar"
+              >
+                <Icon name="settings" size={24} color="#007BFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.iconButton}
                 onPress={() => deleteUser(user.id)}
-                color="#FF0000"
-              />
+              >
+                <Icon name="delete" size={24} color="#FF0000" />
+              </TouchableOpacity>
             </View>
           </View>
         ))
@@ -94,6 +144,17 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  createButton: {
+    backgroundColor: '#007BFF',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
   userContainer: {
     marginBottom: 20,
     padding: 15,
@@ -104,12 +165,25 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-    marginBottom: 5,
+    marginBottom: 10,
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  iconText: {
+    fontSize: 16,
+    marginLeft: 10,
+    color: '#007BFF',
   },
   buttonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginTop: 10,
+  },
+  iconButton: {
+    marginLeft: 15,
   },
   noUsersText: {
     fontSize: 18,
